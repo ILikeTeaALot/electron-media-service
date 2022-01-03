@@ -134,7 +134,7 @@ NAN_METHOD(DarwinMediaService::SetMetaData) {
   }
 
   // Build artwork.
-  if (!newPosterUrl.empty() && @available(macOS 10.13.2, *))
+  if (!newPosterUrl.empty())
   {
     MPMediaItemArtwork* artwork = nil;
     NSString* url = [NSString stringWithUTF8String:newPosterUrl.c_str()];
@@ -145,7 +145,7 @@ NAN_METHOD(DarwinMediaService::SetMetaData) {
         return poster;
       }];
     }
-    if (artwork) {
+    if (@available(macOS 10.13.2, *)) {
       [songInfo setObject:artwork forKey:MPMediaItemPropertyArtwork];
     }
     [poster release];
