@@ -136,20 +136,22 @@ NAN_METHOD(DarwinMediaService::SetMetaData) {
   // Build artwork.
   if (!newPosterUrl.empty() && @available(macOS 10.13.2, *))
   {
-    @autoreleasepool {
-      MPMediaItemArtwork* artwork = nil;
-      NSString* url = [NSString stringWithUTF8String:newPosterUrl.c_str()];
-      NSImage* poster = [[NSImage alloc] initWithContentsOfURL:[NSURL URLWithString:url]];
-      if (poster)
-      {
-        artwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:poster.size requestHandler:^NSImage* _Nonnull(CGSize size) {
-          return poster;
-        }];
-      }
-      if (artwork)
-        [songInfo setObject:artwork forKey:MPMediaItemPropertyArtwork];
+    MPMediaItemArtwork* artwork = nil;
+    NSString* url = [NSString stringWithUTF8String:newPosterUrl.c_str()];
+    NSImage* poster = [[NSImage alloc] initWithContentsOfURL:[NSURL URLWithString:url]];
+    if (poster)
+    {
+      artwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:poster.size requestHandler:^NSImage* _Nonnull(CGSize size) {
+        return poster;
+      }];
     }
+    if (artwork) {
+      [songInfo setObject:artwork forKey:MPMediaItemPropertyArtwork];
+    }
+    [poster release];
+    [artwork release];
   }
 
   [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:songInfo];
+  [songInfo release];
 }
