@@ -145,8 +145,12 @@ NAN_METHOD(DarwinMediaService::SetMetaData) {
         return poster;
       }];
     }
-    if (@available(macOS 10.13.2, *)) {
-      [songInfo setObject:artwork forKey:MPMediaItemPropertyArtwork];
+    if (@available(macOS 10.13.2, *))
+    {
+      if (artwork)
+      {
+        [songInfo setObject:artwork forKey:MPMediaItemPropertyArtwork];
+      }
     }
     [poster release];
     [artwork release];
