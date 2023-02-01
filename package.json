@@ -14,6 +14,7 @@
   "scripts": {
     "build": "node-gyp rebuild",
     "lint": "eslint src",
-    "test": "npm run lint"
+    "test": "npm run lint",
+    "install": ""
   }
 }
