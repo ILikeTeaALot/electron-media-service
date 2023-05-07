@@ -7,26 +7,45 @@ static std::string trackID;
 static std::string lastPosterUrl;
 static MPMediaItemArtwork* lastArtwork;
 
+// static NSMutableDictionary* lastSongInfo;
+
 @implementation NativeMediaController
-  DarwinMediaService* _service;
+	DarwinMediaService* _service;
 
 - (void)associateService:(DarwinMediaService*)service {
-  _service = service;
+	_service = service;
 }
 
-- (MPRemoteCommandHandlerStatus)remotePlay { _service->Emit("play"); return MPRemoteCommandHandlerStatusSuccess; }
-- (MPRemoteCommandHandlerStatus)remotePause { _service->Emit("pause"); return MPRemoteCommandHandlerStatusSuccess; }
-- (MPRemoteCommandHandlerStatus)remoteTogglePlayPause { _service->Emit("playPause"); return MPRemoteCommandHandlerStatusSuccess; }
+- (MPRemoteCommandHandlerStatus)remotePlay
+	{
+		_service->Emit("play");
+		// [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:lastSongInfo];
+		[MPNowPlayingInfoCenter defaultCenter].playbackState = MPNowPlayingPlaybackStatePlaying;
+		return MPRemoteCommandHandlerStatusSuccess;
+	}
+- (MPRemoteCommandHandlerStatus)remotePause
+	{
+		_service->Emit("pause");
+		// [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:lastSongInfo];
+		// [MPNowPlayingInfoCenter defaultCenter].playbackState = MPNowPlayingPlaybackStatePaused;
+		return MPRemoteCommandHandlerStatusSuccess;
+	}
+- (MPRemoteCommandHandlerStatus)remoteTogglePlayPause
+	{
+		_service->Emit("playPause");
+		// [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:lastSongInfo];
+		return MPRemoteCommandHandlerStatusSuccess;
+	}
 - (MPRemoteCommandHandlerStatus)remoteNext { _service->Emit("next"); return MPRemoteCommandHandlerStatusSuccess; }
 - (MPRemoteCommandHandlerStatus)remotePrev { _service->Emit("previous"); return MPRemoteCommandHandlerStatusSuccess; }
 
 - (MPRemoteCommandHandlerStatus)remoteChangePlaybackPosition:(MPChangePlaybackPositionCommandEvent*)event {
-  _service->EmitWithInt("seek", event.positionTime);
-  return MPRemoteCommandHandlerStatusSuccess;
+	_service->EmitWithInt("seek", event.positionTime);
+	return MPRemoteCommandHandlerStatusSuccess;
 }
 
 - (MPRemoteCommandHandlerStatus)move:(MPChangePlaybackPositionCommandEvent*)event {
-  return MPRemoteCommandHandlerStatusSuccess;
+	return MPRemoteCommandHandlerStatusSuccess;
 }
 
 @end
@@ -34,141 +53,146 @@ static MPMediaItemArtwork* lastArtwork;
 static Nan::Persistent<v8::Function> persistentCallback;
 
 NAN_METHOD(DarwinMediaService::Hook) {
-  Nan::ObjectWrap::Unwrap<DarwinMediaService>(info.This());
+	Nan::ObjectWrap::Unwrap<DarwinMediaService>(info.This());
 
-  v8::Local<v8::Function> cb = Nan::To<v8::Function>(info[0]).ToLocalChecked();
-  persistentCallback.Reset(cb);
+	v8::Local<v8::Function> cb = Nan::To<v8::Function>(info[0]).ToLocalChecked();
+	persistentCallback.Reset(cb);
 }
 
 void DarwinMediaService::Emit(std::string eventName) {
-  EmitWithInt(eventName, 0);
+	EmitWithInt(eventName, 0);
 }
 
 void DarwinMediaService::EmitWithInt(std::string eventName, int details) {
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  v8::HandleScope handleScope(isolate);
+	v8::Isolate* isolate = v8::Isolate::GetCurrent();
+	v8::HandleScope handleScope(isolate);
 
-  v8::Local<v8::Value> argv[2] = {
-    Nan::New<v8::String>(eventName.c_str()).ToLocalChecked(),
-    Nan::New<v8::Integer>(details)
-  };
+	v8::Local<v8::Value> argv[2] = {
+		Nan::New<v8::String>(eventName.c_str()).ToLocalChecked(),
+		Nan::New<v8::Integer>(details)
+	};
 
-  v8::Local<v8::Function> callback = Nan::New(persistentCallback);
+	v8::Local<v8::Function> callback = Nan::New(persistentCallback);
 
-  Nan::AsyncResource resource("auryo:addon.callback");
-  resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), callback, 2, argv);
+	Nan::AsyncResource resource("auryo:addon.callback");
+	resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), callback, 2, argv);
 }
 
 NAN_METHOD(DarwinMediaService::New) {
-  DarwinMediaService *service = new DarwinMediaService();
-  service->Wrap(info.This());
-  info.GetReturnValue().Set(info.This());
+	DarwinMediaService *service = new DarwinMediaService();
+	service->Wrap(info.This());
+	info.GetReturnValue().Set(info.This());
 }
 
 NAN_METHOD(DarwinMediaService::StartService) {
-  DarwinMediaService *self = Nan::ObjectWrap::Unwrap<DarwinMediaService>(info.This());
+	DarwinMediaService *self = Nan::ObjectWrap::Unwrap<DarwinMediaService>(info.This());
 
-  NativeMediaController* controller = [[NativeMediaController alloc] init];
-  [controller associateService:self];
+	NativeMediaController* controller = [[NativeMediaController alloc] init];
+	[controller associateService:self];
 
-  MPRemoteCommandCenter *remoteCommandCenter = [MPRemoteCommandCenter sharedCommandCenter];
-  [remoteCommandCenter playCommand].enabled = true;
-  [remoteCommandCenter pauseCommand].enabled = true;
-  [remoteCommandCenter togglePlayPauseCommand].enabled = true;
-  [remoteCommandCenter changePlaybackPositionCommand].enabled = true;
-  [remoteCommandCenter nextTrackCommand].enabled = true;
-  [remoteCommandCenter previousTrackCommand].enabled = true;
+	MPRemoteCommandCenter *remoteCommandCenter = [MPRemoteCommandCenter sharedCommandCenter];
+	[remoteCommandCenter playCommand].enabled = true;
+	[remoteCommandCenter pauseCommand].enabled = true;
+	[remoteCommandCenter togglePlayPauseCommand].enabled = true;
+	[remoteCommandCenter changePlaybackPositionCommand].enabled = true;
+	[remoteCommandCenter nextTrackCommand].enabled = true;
+	[remoteCommandCenter previousTrackCommand].enabled = true;
 
-  [[remoteCommandCenter playCommand] addTarget:controller action:@selector(remotePlay)];
-  [[remoteCommandCenter pauseCommand] addTarget:controller action:@selector(remotePause)];
-  [[remoteCommandCenter togglePlayPauseCommand] addTarget:controller action:@selector(remoteTogglePlayPause)];
-  [[remoteCommandCenter changePlaybackPositionCommand] addTarget:controller action:@selector(remoteChangePlaybackPosition:)];
-  [[remoteCommandCenter nextTrackCommand] addTarget:controller action:@selector(remoteNext)];
-  [[remoteCommandCenter previousTrackCommand] addTarget:controller action:@selector(remotePrev)];
+	[[remoteCommandCenter playCommand] addTarget:controller action:@selector(remotePlay)];
+	[[remoteCommandCenter pauseCommand] addTarget:controller action:@selector(remotePause)];
+	[[remoteCommandCenter togglePlayPauseCommand] addTarget:controller action:@selector(remoteTogglePlayPause)];
+	[[remoteCommandCenter changePlaybackPositionCommand] addTarget:controller action:@selector(remoteChangePlaybackPosition:)];
+	[[remoteCommandCenter nextTrackCommand] addTarget:controller action:@selector(remoteNext)];
+	[[remoteCommandCenter previousTrackCommand] addTarget:controller action:@selector(remotePrev)];
 }
 
 NAN_METHOD(DarwinMediaService::StopService) {
-  Nan::ObjectWrap::Unwrap<DarwinMediaService>(info.This());
-  
-  MPRemoteCommandCenter *remoteCommandCenter = [MPRemoteCommandCenter sharedCommandCenter];
-  [remoteCommandCenter playCommand].enabled = false;
-  [remoteCommandCenter pauseCommand].enabled = false;
-  [remoteCommandCenter togglePlayPauseCommand].enabled = false;
-  [remoteCommandCenter changePlaybackPositionCommand].enabled = false;
+	Nan::ObjectWrap::Unwrap<DarwinMediaService>(info.This());
+	
+	MPRemoteCommandCenter *remoteCommandCenter = [MPRemoteCommandCenter sharedCommandCenter];
+	[remoteCommandCenter playCommand].enabled = false;
+	[remoteCommandCenter pauseCommand].enabled = false;
+	[remoteCommandCenter togglePlayPauseCommand].enabled = false;
+	[remoteCommandCenter changePlaybackPositionCommand].enabled = false;
 }
 
 NAN_METHOD(DarwinMediaService::SetMetaData) {
-  Nan::ObjectWrap::Unwrap<DarwinMediaService>(info.This());
+	Nan::ObjectWrap::Unwrap<DarwinMediaService>(info.This());
 
-  std::string songTitle = *Nan::Utf8String(info[0]);
-  std::string songArtist = *Nan::Utf8String(info[1]);
-  std::string songAlbum = *Nan::Utf8String(info[2]);
-  std::string songState = *Nan::Utf8String(info[3]);
-  std::string songID = *Nan::Utf8String(info[4]);
-  double currentTime = info[5]->NumberValue(Nan::GetCurrentContext()).ToChecked();
-  double duration = info[6]->NumberValue(Nan::GetCurrentContext()).ToChecked();
+	std::string songTitle = *Nan::Utf8String(info[0]);
+	std::string songArtist = *Nan::Utf8String(info[1]);
+	std::string songAlbum = *Nan::Utf8String(info[2]);
+	std::string songState = *Nan::Utf8String(info[3]);
+	std::string songID = *Nan::Utf8String(info[4]);
+	// unsigned int currentTime = info[5]->ToInt32(Nan::GetCurrentContext()).ToLocalChecked()->Value();
+	// unsigned int duration = info[6]->ToInt32(Nan::GetCurrentContext()).ToLocalChecked()->Value();
+	double currentTime = info[5]->NumberValue(Nan::GetCurrentContext()).ToChecked();
+	double duration = info[6]->NumberValue(Nan::GetCurrentContext()).ToChecked();
 
-  std::string newPosterUrl;
-  if (!info[7]->IsUndefined() && !info[7]->IsNull())
-   newPosterUrl = *Nan::Utf8String(info[7]);
+	std::string newPosterUrl;
+	if (!info[7]->IsUndefined() && !info[7]->IsNull())
+	newPosterUrl = *Nan::Utf8String(info[7]);
 
-  NSMutableDictionary *songInfo = [[NSMutableDictionary alloc] init];
-  [songInfo setObject:[NSString stringWithUTF8String:songTitle.c_str()] forKey:MPMediaItemPropertyTitle];
-  [songInfo setObject:[NSString stringWithUTF8String:songArtist.c_str()] forKey:MPMediaItemPropertyArtist];
-  [songInfo setObject:[NSString stringWithUTF8String:songAlbum.c_str()] forKey:MPMediaItemPropertyAlbumTitle];
-  [songInfo setObject:[NSNumber numberWithFloat:currentTime] forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
-  [songInfo setObject:[NSNumber numberWithFloat:duration] forKey:MPMediaItemPropertyPlaybackDuration];
-  [songInfo setObject:[NSString stringWithUTF8String:songID.c_str()] forKey:MPMediaItemPropertyPersistentID];
-  songInfo[MPNowPlayingInfoPropertyMediaType] = @(MPNowPlayingInfoMediaTypeAudio);
+	NSMutableDictionary *songInfo = [[NSMutableDictionary alloc] init];
+	[songInfo setObject:[NSString stringWithUTF8String:songTitle.c_str()] forKey:MPMediaItemPropertyTitle];
+	[songInfo setObject:[NSString stringWithUTF8String:songArtist.c_str()] forKey:MPMediaItemPropertyArtist];
+	[songInfo setObject:[NSString stringWithUTF8String:songAlbum.c_str()] forKey:MPMediaItemPropertyAlbumTitle];
+	[songInfo setObject:[NSNumber numberWithFloat:currentTime] forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
+	[songInfo setObject:[NSNumber numberWithFloat:duration] forKey:MPMediaItemPropertyPlaybackDuration];
+	[songInfo setObject:[NSNumber numberWithFloat:4170] forKey:MPMediaItemPropertyPersistentID];
+	[songInfo setObject:[NSNumber numberWithFloat:1.0f] forKey:MPNowPlayingInfoPropertyPlaybackRate];
+	songInfo[MPNowPlayingInfoPropertyMediaType] = @(MPNowPlayingInfoMediaTypeAudio);
 
-  if (songState == "playing") 
-  {
-    [MPNowPlayingInfoCenter defaultCenter].playbackState = MPNowPlayingPlaybackStatePlaying;
-    [songInfo setObject:[NSNumber numberWithFloat:1.0f] forKey:MPNowPlayingInfoPropertyPlaybackRate];
-  } 
-  else if (songState == "paused") 
-  {
-    [MPNowPlayingInfoCenter defaultCenter].playbackState = MPNowPlayingPlaybackStatePaused;
-    [songInfo setObject:[NSNumber numberWithFloat:0.0f] forKey:MPNowPlayingInfoPropertyPlaybackRate];
-  } 
-  else 
-  {
-    [MPNowPlayingInfoCenter defaultCenter].playbackState = MPNowPlayingPlaybackStateStopped;
-  }
+	if (songState == "playing") 
+	{
+		[MPNowPlayingInfoCenter defaultCenter].playbackState = MPNowPlayingPlaybackStatePlaying;
+		[songInfo setObject:[NSNumber numberWithFloat:1.0f] forKey:MPNowPlayingInfoPropertyPlaybackRate];
+	} 
+	else if (songState == "paused") 
+	{
+		[MPNowPlayingInfoCenter defaultCenter].playbackState = MPNowPlayingPlaybackStatePaused;
+		[songInfo setObject:[NSNumber numberWithFloat:0.0f] forKey:MPNowPlayingInfoPropertyPlaybackRate];
+	} 
+	else 
+	{
+		[MPNowPlayingInfoCenter defaultCenter].playbackState = MPNowPlayingPlaybackStateStopped;
+	}
 
-  // Build artwork.
-  if (!newPosterUrl.empty())
-  {
-    MPMediaItemArtwork* artwork = nil;
+	/* TODO: Implement Blob and File loading. */
+	// Build artwork.
+	if (!newPosterUrl.empty())
+	{
+	MPMediaItemArtwork* artwork = nil;
 
-    if (newPosterUrl == lastPosterUrl) {
-      artwork = lastArtwork;
-    } else {
-      NSString* url = [NSString stringWithUTF8String:newPosterUrl.c_str()];
-      NSImage* poster = [[NSImage alloc] initWithContentsOfURL:[NSURL URLWithString:url]];
-      if (poster)
-      {
-        artwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:poster.size requestHandler:^NSImage* _Nonnull(CGSize size) {
-          return poster;
-        }];
+	if (newPosterUrl == lastPosterUrl) {
+		artwork = lastArtwork;
+	} else {
+		NSString* url = [NSString stringWithUTF8String:newPosterUrl.c_str()];
+		NSImage* poster = [[NSImage alloc] initWithContentsOfURL:[NSURL URLWithString:url]];
+		if (poster)
+		{
+		artwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:poster.size requestHandler:^NSImage* _Nonnull(CGSize size) {
+			return poster;
+		}];
 
-        [poster release];
-        [lastArtwork release];
+		[poster release];
+		[lastArtwork release];
 
-        lastPosterUrl = newPosterUrl;
-        lastArtwork = artwork;
-      }
-    }
+		lastPosterUrl = newPosterUrl;
+		lastArtwork = artwork;
+		}
+	}
 
-    if (@available(macOS 10.13.2, *))
-    {
-      if (artwork)
-      {
-        [songInfo setObject:artwork forKey:MPMediaItemPropertyArtwork];
-      }
-    }
-  }
+	if (@available(macOS 10.13.2, *))
+	{
+		if (artwork)
+		{
+			[songInfo setObject:artwork forKey:MPMediaItemPropertyArtwork];
+		}
+	}
+	}
 
-  [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:songInfo];
-  [songInfo release];
+	[[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:songInfo];
+	// lastSongInfo = songInfo;
+	[songInfo release];
 }
