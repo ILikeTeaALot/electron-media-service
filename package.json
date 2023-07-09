@@ -1,6 +1,6 @@
 {
   "name": "electron-media-service",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "OS Media Service integration for Electron apps",
   "main": "src/index.js",
   "author": "Samuel Attard",
@@ -10,6 +10,9 @@
     "nan": "^2.17.0",
     "node-gyp": "^9.3.0",
     "semver": "^7.5.1"
+  },
+  "devDependencies": {
+    "electron": "^24.3.0"
   },
   "scripts": {
     "build": "node-gyp rebuild",
