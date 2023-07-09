@@ -2,3 +2,6 @@ bin
 build
 node_modules
 .yarn
+
+# MacOS stuff
+.DS_Store
