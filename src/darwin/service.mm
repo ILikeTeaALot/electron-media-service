@@ -171,7 +171,7 @@ NAN_METHOD(DarwinMediaService::SetMetaData) {
 	else
 	{
 		NSString* url = [NSString stringWithUTF8String:newPosterUrl.c_str()];
-		NSImage* poster = [[NSImage alloc] initWithContentsOfURL:[NSURL URLWithString:url]];
+		NSImage* poster = [[NSImage alloc] initWithContentsOfFile:url];
 		if (poster)
 		{
 		artwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:poster.size requestHandler:^NSImage* _Nonnull(CGSize size) {
