@@ -164,9 +164,12 @@ NAN_METHOD(DarwinMediaService::SetMetaData) {
 	{
 	MPMediaItemArtwork* artwork = nil;
 
-	if (newPosterUrl == lastPosterUrl) {
+	if (newPosterUrl == lastPosterUrl)
+	{
 		artwork = lastArtwork;
-	} else {
+	}
+	else
+	{
 		NSString* url = [NSString stringWithUTF8String:newPosterUrl.c_str()];
 		NSImage* poster = [[NSImage alloc] initWithContentsOfURL:[NSURL URLWithString:url]];
 		if (poster)
